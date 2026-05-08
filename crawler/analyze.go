@@ -3,6 +3,7 @@ package crawler
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"time"
 )
@@ -27,11 +28,19 @@ type Report struct {
 }
 
 type Page struct {
+	URL          string       `json:"url"`
+	Depth        int          `json:"depth"`
+	HTTPStatus   int          `json:"http_status"`
+	Status       string       `json:"status"`
+	Error        string       `json:"error,omitempty"`
+	BrokenLinks  []BrokenLink `json:"broken_links"`
+	DiscoveredAt time.Time    `json:"discovered_at"`
+}
+
+type BrokenLink struct {
 	URL        string `json:"url"`
-	Depth      int    `json:"depth"`
-	HTTPStatus int    `json:"http_status"`
-	Status     string `json:"status"`
-	Error      string `json:"error"`
+	StatusCode int    `json:"status_code,omitempty"`
+	Error      string `json:"error,omitempty"`
 }
 
 func Analyze(ctx context.Context, opts Options) ([]byte, error) {
@@ -40,35 +49,17 @@ func Analyze(ctx context.Context, opts Options) ([]byte, error) {
 		client = &http.Client{}
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, opts.URL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if opts.UserAgent != "" {
-		req.Header.Set("User-Agent", opts.UserAgent)
-	}
-
 	page := Page{
-		URL:   opts.URL,
-		Depth: 0,
+		URL:          opts.URL,
+		Depth:        0,
+		BrokenLinks:  []BrokenLink{},
+		DiscoveredAt: time.Now(),
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		page.Status = "error"
-		page.Error = err.Error()
-	} else {
-		defer resp.Body.Close()
-
-		page.HTTPStatus = resp.StatusCode
-
-		if resp.StatusCode >= 400 {
-			page.Status = "error"
-			page.Error = resp.Status
-		} else {
-			page.Status = "ok"
-		}
+	body, err := fetchPage(ctx, client, opts, &page)
+	if err == nil && page.Status == "ok" {
+		links := extractLinks(body, page.URL)
+		page.BrokenLinks = checkBrokenLinks(ctx, client, opts, links)
 	}
 
 	report := Report{
@@ -83,4 +74,84 @@ func Analyze(ctx context.Context, opts Options) ([]byte, error) {
 	}
 
 	return json.Marshal(report)
+}
+
+func fetchPage(ctx context.Context, client *http.Client, opts Options, page *Page) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, page.URL, nil)
+	if err != nil {
+		page.Status = "error"
+		page.Error = err.Error()
+		return nil, err
+	}
+
+	if opts.UserAgent != "" {
+		req.Header.Set("User-Agent", opts.UserAgent)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		page.Status = "error"
+		page.Error = err.Error()
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	page.HTTPStatus = resp.StatusCode
+
+	if resp.StatusCode >= 400 {
+		page.Status = "error"
+		page.Error = resp.Status
+		return nil, nil
+	}
+
+	page.Status = "ok"
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		page.Status = "error"
+		page.Error = err.Error()
+		return nil, err
+	}
+
+	return body, nil
+}
+
+func checkBrokenLinks(ctx context.Context, client *http.Client, opts Options, links []string) []BrokenLink {
+	brokenLinks := []BrokenLink{}
+
+	for _, link := range links {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
+		if err != nil {
+			brokenLinks = append(brokenLinks, BrokenLink{
+				URL:   link,
+				Error: err.Error(),
+			})
+			continue
+		}
+
+		if opts.UserAgent != "" {
+			req.Header.Set("User-Agent", opts.UserAgent)
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			brokenLinks = append(brokenLinks, BrokenLink{
+				URL:   link,
+				Error: err.Error(),
+			})
+			continue
+		}
+
+		resp.Body.Close()
+
+		if resp.StatusCode >= 400 {
+			brokenLinks = append(brokenLinks, BrokenLink{
+				URL:        link,
+				StatusCode: resp.StatusCode,
+			})
+		}
+	}
+
+	return brokenLinks
 }
