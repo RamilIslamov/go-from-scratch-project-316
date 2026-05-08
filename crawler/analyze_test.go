@@ -83,3 +83,72 @@ func TestAnalyzeNetworkError(t *testing.T) {
 		t.Fatalf("expected error field")
 	}
 }
+
+func TestAnalyzeNotFoundStatus(t *testing.T) {
+	client := &http.Client{
+		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusNotFound,
+				Body:       io.NopCloser(strings.NewReader("not found")),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	}
+
+	opts := Options{
+		URL:        "https://example.com/missing-page",
+		Depth:      1,
+		HTTPClient: client,
+		IndentJSON: true,
+	}
+
+	result, err := Analyze(context.Background(), opts)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	json := string(result)
+
+	if !strings.Contains(json, `"http_status": 404`) {
+		t.Fatalf("expected http_status 404")
+	}
+
+	if !strings.Contains(json, `"status": "error"`) {
+		t.Fatalf(`expected status "error" for 404`)
+	}
+}
+
+func TestAnalyzeTimeout(t *testing.T) {
+	client := &http.Client{
+		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			<-req.Context().Done()
+
+			return nil, req.Context().Err()
+		}),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	opts := Options{
+		URL:        "https://example.com/slow-page",
+		Depth:      1,
+		HTTPClient: client,
+		IndentJSON: true,
+	}
+
+	result, err := Analyze(ctx, opts)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	json := string(result)
+
+	if !strings.Contains(json, `"status": "error"`) {
+		t.Fatalf(`expected status "error"`)
+	}
+
+	if !strings.Contains(json, `context deadline exceeded`) {
+		t.Fatalf("expected timeout error")
+	}
+}

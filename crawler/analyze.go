@@ -62,7 +62,13 @@ func Analyze(ctx context.Context, opts Options) ([]byte, error) {
 		defer resp.Body.Close()
 
 		page.HTTPStatus = resp.StatusCode
-		page.Status = "ok"
+
+		if resp.StatusCode >= 400 {
+			page.Status = "error"
+			page.Error = resp.Status
+		} else {
+			page.Status = "ok"
+		}
 	}
 
 	report := Report{
