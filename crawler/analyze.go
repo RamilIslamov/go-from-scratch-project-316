@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -52,31 +54,75 @@ type SEO struct {
 	HasH1          bool   `json:"has_h1"`
 }
 
+type crawlItem struct {
+	URL   string
+	Depth int
+}
+
 func Analyze(ctx context.Context, opts Options) ([]byte, error) {
 	client := opts.HTTPClient
 	if client == nil {
 		client = &http.Client{}
 	}
 
-	page := Page{
-		URL:          opts.URL,
-		Depth:        0,
-		BrokenLinks:  []BrokenLink{},
-		DiscoveredAt: time.Now(),
-	}
-
-	body, err := fetchPage(ctx, client, opts, &page)
-	if err == nil && page.Status == "ok" {
-		page.SEO = extractSEO(body)
-		links := extractLinks(body, page.URL)
-		page.BrokenLinks = checkBrokenLinks(ctx, client, opts, links)
-	}
-
 	report := Report{
 		RootURL:     opts.URL,
 		Depth:       opts.Depth,
 		GeneratedAt: time.Now(),
-		Pages:       []Page{page},
+		Pages:       []Page{},
+	}
+
+	visited := make(map[string]bool)
+
+	queue := []crawlItem{
+		{
+			URL:   opts.URL,
+			Depth: 0,
+		},
+	}
+
+	for len(queue) > 0 {
+		if ctx.Err() != nil {
+			break
+		}
+
+		item := queue[0]
+		queue = queue[1:]
+
+		if visited[item.URL] {
+			continue
+		}
+
+		visited[item.URL] = true
+
+		page := Page{
+			URL:          item.URL,
+			Depth:        item.Depth,
+			BrokenLinks:  []BrokenLink{},
+			DiscoveredAt: time.Now(),
+		}
+
+		body, err := fetchPage(ctx, client, opts, &page)
+		if err == nil && page.Status == "ok" {
+			page.SEO = extractSEO(body)
+
+			links := extractLinks(body, page.URL)
+			page.BrokenLinks = checkBrokenLinks(ctx, client, opts, links)
+
+			nextDepth := item.Depth + 1
+			if nextDepth < opts.Depth {
+				for _, link := range links {
+					if isInternalLink(opts.URL, link) && !visited[link] {
+						queue = append(queue, crawlItem{
+							URL:   link,
+							Depth: nextDepth,
+						})
+					}
+				}
+			}
+		}
+
+		report.Pages = append(report.Pages, page)
 	}
 
 	if opts.IndentJSON {
@@ -84,6 +130,20 @@ func Analyze(ctx context.Context, opts Options) ([]byte, error) {
 	}
 
 	return json.Marshal(report)
+}
+
+func isInternalLink(rootURL string, link string) bool {
+	root, err := url.Parse(rootURL)
+	if err != nil {
+		return false
+	}
+
+	parsed, err := url.Parse(link)
+	if err != nil {
+		return false
+	}
+
+	return strings.EqualFold(root.Host, parsed.Host)
 }
 
 func fetchPage(ctx context.Context, client *http.Client, opts Options, page *Page) ([]byte, error) {
