@@ -33,6 +33,7 @@ type Page struct {
 	HTTPStatus   int          `json:"http_status"`
 	Status       string       `json:"status"`
 	Error        string       `json:"error,omitempty"`
+	SEO          SEO          `json:"seo"`
 	BrokenLinks  []BrokenLink `json:"broken_links"`
 	DiscoveredAt time.Time    `json:"discovered_at"`
 }
@@ -41,6 +42,14 @@ type BrokenLink struct {
 	URL        string `json:"url"`
 	StatusCode int    `json:"status_code,omitempty"`
 	Error      string `json:"error,omitempty"`
+}
+
+type SEO struct {
+	HasTitle       bool   `json:"has_title"`
+	Title          string `json:"title"`
+	HasDescription bool   `json:"has_description"`
+	Description    string `json:"description"`
+	HasH1          bool   `json:"has_h1"`
 }
 
 func Analyze(ctx context.Context, opts Options) ([]byte, error) {
@@ -58,6 +67,7 @@ func Analyze(ctx context.Context, opts Options) ([]byte, error) {
 
 	body, err := fetchPage(ctx, client, opts, &page)
 	if err == nil && page.Status == "ok" {
+		page.SEO = extractSEO(body)
 		links := extractLinks(body, page.URL)
 		page.BrokenLinks = checkBrokenLinks(ctx, client, opts, links)
 	}
