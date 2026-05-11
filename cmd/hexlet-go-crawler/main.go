@@ -64,7 +64,7 @@ func run(args []string, out io.Writer, client *http.Client) error {
 
 		Action: func(c *cli.Context) error {
 			if c.Args().Len() == 0 {
-				fmt.Fprintln(out, "URL is required")
+				_, _ = fmt.Fprintln(out, "URL is required")
 				return nil
 			}
 
@@ -87,11 +87,11 @@ func run(args []string, out io.Writer, client *http.Client) error {
 
 			result, err := crawler.Analyze(context.Background(), opts)
 			if err != nil {
-				fmt.Fprintln(out, err)
+				_, _ = fmt.Fprintln(out, err)
 				return nil
 			}
 
-			fmt.Fprintln(out, string(result))
+			_, _ = fmt.Fprintln(out, string(result))
 			return nil
 		},
 	}

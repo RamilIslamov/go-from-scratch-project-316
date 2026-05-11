@@ -26,7 +26,9 @@ func fetchPage(ctx context.Context, client *http.Client, limiter *rateLimiter, o
 		return nil, err
 	}
 
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	page.HTTPStatus = resp.StatusCode
 
@@ -55,14 +57,14 @@ func doRequestWithRetries(ctx context.Context, client *http.Client, limiter *rat
 	for attempt := 0; attempt <= retries; attempt++ {
 		if ctx.Err() != nil {
 			if lastResp != nil && lastResp.Body != nil {
-				lastResp.Body.Close()
+				_ = lastResp.Body.Close()
 			}
 			return nil, ctx.Err()
 		}
 
 		if err := limiter.wait(ctx); err != nil {
 			if lastResp != nil && lastResp.Body != nil {
-				lastResp.Body.Close()
+				_ = lastResp.Body.Close()
 			}
 			return nil, err
 		}
@@ -85,7 +87,7 @@ func doRequestWithRetries(ctx context.Context, client *http.Client, limiter *rat
 		}
 
 		if lastResp != nil && lastResp.Body != nil {
-			lastResp.Body.Close()
+			_ = lastResp.Body.Close()
 		}
 
 		timer := time.NewTimer(retryDelay())

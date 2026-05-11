@@ -51,7 +51,7 @@ func checkBrokenLinks(
 			continue
 		}
 
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		if resp.StatusCode >= 400 {
 			brokenLinks = append(brokenLinks, BrokenLink{
@@ -76,23 +76,6 @@ func isInternalLink(rootURL string, link string) bool {
 	}
 
 	return strings.EqualFold(root.Host, parsed.Host)
-}
-
-func isLikelyHTMLPage(link string) bool {
-	parsed, err := url.Parse(link)
-	if err != nil {
-		return false
-	}
-
-	path := strings.ToLower(parsed.Path)
-
-	if path == "" || strings.HasSuffix(path, "/") {
-		return true
-	}
-
-	return strings.HasSuffix(path, ".html") ||
-		strings.HasSuffix(path, ".htm") ||
-		strings.HasSuffix(path, ".xml")
 }
 
 func isKnownInternalPage(link string) bool {

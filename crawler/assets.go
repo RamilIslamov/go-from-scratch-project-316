@@ -83,7 +83,9 @@ func fetchAsset(
 		return asset
 	}
 
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	asset.StatusCode = resp.StatusCode
 
