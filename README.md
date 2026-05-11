@@ -50,6 +50,32 @@ If both --delay and --rps are provided, --rps has priority.
 Example:
 go run ./cmd/hexlet-go-crawler --delay 1s --rps 5 https://example.com
 
+## Retries
+
+The crawler can retry temporary request failures.
+
+Use `--retries` to control the maximum number of retry attempts:
+
+```bash
+go run ./cmd/hexlet-go-crawler --retries 2 https://example.com
+```
+
+`--retries 2` means:
+
+- 1 initial request
+- up to 2 retry attempts
+- 3 total attempts maximum
+
+Retries are performed only for temporary failures:
+
+- network errors
+- `429 Too Many Requests`
+- `5xx` server errors
+
+Non-temporary responses like `404 Not Found` are not retried.
+
+If a retry eventually succeeds, the final report uses the successful result. If all attempts fail, the report contains the last error or status code.
+
 ## Install dependencies
 
 ```bash

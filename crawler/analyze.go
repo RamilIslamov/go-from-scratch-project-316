@@ -155,12 +155,6 @@ func isInternalLink(rootURL string, link string) bool {
 }
 
 func fetchPage(ctx context.Context, client *http.Client, limiter *rateLimiter, opts Options, page *Page) ([]byte, error) {
-	if err := limiter.wait(ctx); err != nil {
-		page.Status = "error"
-		page.Error = err.Error()
-		return nil, err
-	}
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, page.URL, nil)
 	if err != nil {
 		page.Status = "error"
@@ -172,7 +166,7 @@ func fetchPage(ctx context.Context, client *http.Client, limiter *rateLimiter, o
 		req.Header.Set("User-Agent", opts.UserAgent)
 	}
 
-	resp, err := client.Do(req)
+	resp, err := doRequestWithRetries(ctx, client, limiter, req, opts.Retries)
 	if err != nil {
 		page.Status = "error"
 		page.Error = err.Error()
@@ -205,13 +199,6 @@ func checkBrokenLinks(ctx context.Context, client *http.Client, limiter *rateLim
 	brokenLinks := []BrokenLink{}
 
 	for _, link := range links {
-		if err := limiter.wait(ctx); err != nil {
-			brokenLinks = append(brokenLinks, BrokenLink{
-				URL:   link,
-				Error: err.Error(),
-			})
-			return brokenLinks
-		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
 		if err != nil {
 			brokenLinks = append(brokenLinks, BrokenLink{
@@ -225,7 +212,7 @@ func checkBrokenLinks(ctx context.Context, client *http.Client, limiter *rateLim
 			req.Header.Set("User-Agent", opts.UserAgent)
 		}
 
-		resp, err := client.Do(req)
+		resp, err := doRequestWithRetries(ctx, client, limiter, req, opts.Retries)
 		if err != nil {
 			brokenLinks = append(brokenLinks, BrokenLink{
 				URL:   link,
@@ -290,4 +277,68 @@ func (l *rateLimiter) wait(ctx context.Context) error {
 
 	l.last = time.Now()
 	return nil
+}
+
+func doRequestWithRetries(ctx context.Context, client *http.Client, limiter *rateLimiter, req *http.Request, retries int) (*http.Response, error) {
+	var lastResp *http.Response
+	var lastErr error
+
+	for attempt := 0; attempt <= retries; attempt++ {
+		if ctx.Err() != nil {
+			if lastResp != nil && lastResp.Body != nil {
+				lastResp.Body.Close()
+			}
+			return nil, ctx.Err()
+		}
+
+		if err := limiter.wait(ctx); err != nil {
+			if lastResp != nil && lastResp.Body != nil {
+				lastResp.Body.Close()
+			}
+			return nil, err
+		}
+
+		resp, err := client.Do(req)
+
+		if err == nil && resp != nil && !isRetriableStatus(resp.StatusCode) {
+			return resp, nil
+		}
+
+		if err != nil && !isRetriableError(err) {
+			return resp, err
+		}
+
+		lastResp = resp
+		lastErr = err
+
+		if attempt == retries {
+			return lastResp, lastErr
+		}
+
+		if lastResp != nil && lastResp.Body != nil {
+			lastResp.Body.Close()
+		}
+
+		timer := time.NewTimer(retryDelay())
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, ctx.Err()
+		case <-timer.C:
+		}
+	}
+
+	return lastResp, lastErr
+}
+
+func isRetriableStatus(statusCode int) bool {
+	return statusCode == http.StatusTooManyRequests || statusCode >= 500
+}
+
+func isRetriableError(err error) bool {
+	return err != nil
+}
+
+func retryDelay() time.Duration {
+	return 50 * time.Millisecond
 }
