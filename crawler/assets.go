@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"sort"
 	"strconv"
 )
 
@@ -28,7 +29,24 @@ func checkAssets(
 		assets = append(assets, asset)
 	}
 
+	sort.SliceStable(assets, func(i, j int) bool {
+		return assetTypeOrder(assets[i].Type) < assetTypeOrder(assets[j].Type)
+	})
+
 	return assets
+}
+
+func assetTypeOrder(assetType string) int {
+	switch assetType {
+	case "image":
+		return 0
+	case "script":
+		return 1
+	case "style":
+		return 2
+	default:
+		return 3
+	}
 }
 
 func fetchAsset(

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"sort"
 	"time"
 )
 
@@ -89,15 +90,31 @@ func appendInternalLinks(
 		return queue
 	}
 
+	seen := make(map[string]bool)
+	internalLinks := []string{}
+
 	for _, link := range links {
 		link = normalizeURL(link)
 
-		if isInternalLink(rootURL, link) && !visited[link] {
-			queue = append(queue, crawlItem{
-				URL:   link,
-				Depth: nextDepth,
-			})
+		if !isInternalLink(rootURL, link) {
+			continue
 		}
+
+		if visited[link] || seen[link] {
+			continue
+		}
+
+		seen[link] = true
+		internalLinks = append(internalLinks, link)
+	}
+
+	sort.Strings(internalLinks)
+
+	for _, link := range internalLinks {
+		queue = append(queue, crawlItem{
+			URL:   link,
+			Depth: nextDepth,
+		})
 	}
 
 	return queue
