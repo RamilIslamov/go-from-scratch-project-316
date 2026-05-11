@@ -1,4 +1,5 @@
 ### Hexlet tests and linter status:
+
 [![Actions Status](https://github.com/RamilIslamov/go-from-scratch-project-316/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/RamilIslamov/go-from-scratch-project-316/actions)
 
 # hexlet-go-crawler
@@ -23,9 +24,31 @@ Depth is counted from the root URL:
 External links are not crawled as pages, but they can still be checked and reported as broken links.
 
 Example:
+
 ```bash
-go run ./cmd/hexlet-go-crawler --depth 2 https://example.com
+```go run ./cmd/hexlet-go-crawler --depth 2 https://example.com```
 ```
+
+## Request rate limiting
+
+The crawler can limit request speed globally for the whole crawling process.
+
+You can use a fixed delay between HTTP requests:
+
+```bash
+```go run ./cmd/hexlet-go-crawler --delay 200ms https://example.com```
+```
+
+Supported duration examples:
+
+- 200ms
+- 1s
+- 2s
+
+If both --delay and --rps are provided, --rps has priority.
+
+Example:
+go run ./cmd/hexlet-go-crawler --delay 1s --rps 5 https://example.com
 
 ## Install dependencies
 

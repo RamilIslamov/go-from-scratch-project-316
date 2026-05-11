@@ -9,7 +9,7 @@ import (
 
 	"code/crawler"
 
-	cli "github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v2"
 )
 
 func main() {
@@ -72,6 +72,7 @@ func main() {
 				Retries:     c.Int("retries"),
 				Delay:       c.Duration("delay"),
 				Timeout:     c.Duration("timeout"),
+				RPS:         c.Int("rps"),
 				UserAgent:   c.String("user-agent"),
 				Concurrency: c.Int("workers"),
 				IndentJSON:  true,

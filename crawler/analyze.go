@@ -16,10 +16,16 @@ type Options struct {
 	Retries     int
 	Delay       time.Duration
 	Timeout     time.Duration
+	RPS         int
 	UserAgent   string
 	Concurrency int
 	IndentJSON  bool
 	HTTPClient  *http.Client
+}
+
+type rateLimiter struct {
+	interval time.Duration
+	last     time.Time
 }
 
 type Report struct {
@@ -65,6 +71,8 @@ func Analyze(ctx context.Context, opts Options) ([]byte, error) {
 		client = &http.Client{}
 	}
 
+	limiter := newRateLimiter(opts)
+
 	report := Report{
 		RootURL:     opts.URL,
 		Depth:       opts.Depth,
@@ -102,12 +110,12 @@ func Analyze(ctx context.Context, opts Options) ([]byte, error) {
 			DiscoveredAt: time.Now(),
 		}
 
-		body, err := fetchPage(ctx, client, opts, &page)
+		body, err := fetchPage(ctx, client, limiter, opts, &page)
 		if err == nil && page.Status == "ok" {
 			page.SEO = extractSEO(body)
 
 			links := extractLinks(body, page.URL)
-			page.BrokenLinks = checkBrokenLinks(ctx, client, opts, links)
+			page.BrokenLinks = checkBrokenLinks(ctx, client, limiter, opts, links)
 
 			nextDepth := item.Depth + 1
 			if nextDepth < opts.Depth {
@@ -146,7 +154,13 @@ func isInternalLink(rootURL string, link string) bool {
 	return strings.EqualFold(root.Host, parsed.Host)
 }
 
-func fetchPage(ctx context.Context, client *http.Client, opts Options, page *Page) ([]byte, error) {
+func fetchPage(ctx context.Context, client *http.Client, limiter *rateLimiter, opts Options, page *Page) ([]byte, error) {
+	if err := limiter.wait(ctx); err != nil {
+		page.Status = "error"
+		page.Error = err.Error()
+		return nil, err
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, page.URL, nil)
 	if err != nil {
 		page.Status = "error"
@@ -187,10 +201,17 @@ func fetchPage(ctx context.Context, client *http.Client, opts Options, page *Pag
 	return body, nil
 }
 
-func checkBrokenLinks(ctx context.Context, client *http.Client, opts Options, links []string) []BrokenLink {
+func checkBrokenLinks(ctx context.Context, client *http.Client, limiter *rateLimiter, opts Options, links []string) []BrokenLink {
 	brokenLinks := []BrokenLink{}
 
 	for _, link := range links {
+		if err := limiter.wait(ctx); err != nil {
+			brokenLinks = append(brokenLinks, BrokenLink{
+				URL:   link,
+				Error: err.Error(),
+			})
+			return brokenLinks
+		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
 		if err != nil {
 			brokenLinks = append(brokenLinks, BrokenLink{
@@ -224,4 +245,49 @@ func checkBrokenLinks(ctx context.Context, client *http.Client, opts Options, li
 	}
 
 	return brokenLinks
+}
+
+func newRateLimiter(opts Options) *rateLimiter {
+	if opts.RPS > 0 {
+		return &rateLimiter{
+			interval: time.Second / time.Duration(opts.RPS),
+		}
+	}
+
+	if opts.Delay > 0 {
+		return &rateLimiter{
+			interval: opts.Delay,
+		}
+	}
+
+	return &rateLimiter{}
+}
+
+func (l *rateLimiter) wait(ctx context.Context) error {
+	if l.interval <= 0 {
+		l.last = time.Now()
+		return nil
+	}
+
+	now := time.Now()
+
+	if l.last.IsZero() {
+		l.last = now
+		return nil
+	}
+
+	nextAllowed := l.last.Add(l.interval)
+	if now.Before(nextAllowed) {
+		timer := time.NewTimer(nextAllowed.Sub(now))
+		defer timer.Stop()
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-timer.C:
+		}
+	}
+
+	l.last = time.Now()
+	return nil
 }
