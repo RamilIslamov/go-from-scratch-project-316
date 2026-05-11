@@ -13,11 +13,12 @@ func Analyze(ctx context.Context, opts Options) ([]byte, error) {
 		client = &http.Client{}
 	}
 
+	rootURL := normalizeURL(opts.URL)
 	limiter := newRateLimiter(opts)
 	assetCache := make(map[string]Asset)
 
 	report := Report{
-		RootURL:     opts.URL,
+		RootURL:     rootURL,
 		Depth:       opts.Depth,
 		GeneratedAt: time.Now(),
 		Pages:       []Page{},
@@ -27,7 +28,7 @@ func Analyze(ctx context.Context, opts Options) ([]byte, error) {
 
 	queue := []crawlItem{
 		{
-			URL:   opts.URL,
+			URL:   rootURL,
 			Depth: 0,
 		},
 	}
@@ -49,8 +50,6 @@ func Analyze(ctx context.Context, opts Options) ([]byte, error) {
 		page := Page{
 			URL:          item.URL,
 			Depth:        item.Depth,
-			BrokenLinks:  []BrokenLink{},
-			Assets:       []Asset{},
 			DiscoveredAt: time.Now(),
 		}
 
@@ -64,7 +63,7 @@ func Analyze(ctx context.Context, opts Options) ([]byte, error) {
 			assetRefs := extractAssets(body, page.URL)
 			page.Assets = checkAssets(ctx, client, limiter, opts, assetRefs, assetCache)
 
-			queue = appendInternalLinks(queue, visited, opts.URL, links, item.Depth, opts.Depth)
+			queue = appendInternalLinks(queue, visited, rootURL, links, item.Depth, opts.Depth)
 		}
 
 		report.Pages = append(report.Pages, page)
@@ -91,6 +90,8 @@ func appendInternalLinks(
 	}
 
 	for _, link := range links {
+		link = normalizeURL(link)
+
 		if isInternalLink(rootURL, link) && !visited[link] {
 			queue = append(queue, crawlItem{
 				URL:   link,

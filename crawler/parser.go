@@ -214,3 +214,18 @@ func extractAssets(body []byte, baseURL string) []assetRef {
 
 	return assets
 }
+
+func normalizeURL(rawURL string) string {
+	parsed, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return rawURL
+	}
+
+	parsed.Fragment = ""
+
+	if parsed.Path == "/" {
+		parsed.Path = ""
+	}
+
+	return parsed.String()
+}
