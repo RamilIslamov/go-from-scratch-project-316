@@ -74,7 +74,35 @@ Retries are performed only for temporary failures:
 
 Non-temporary responses like `404 Not Found` are not retried.
 
-If a retry eventually succeeds, the final report uses the successful result. If all attempts fail, the report contains the last error or status code.
+If a retry eventually succeeds, the final report uses the successful result. If all attempts fail,
+the report contains the last error or status code.
+
+## Assets report
+
+The crawler collects information about static assets found on each HTML page.
+
+Supported asset types:
+
+- `image` from `<img src="...">`
+- `script` from `<script src="...">`
+- `style` from `<link rel="stylesheet" href="...">`
+
+Each asset in the JSON report contains:
+
+```json
+{
+  "url": "https://example.com/static/logo.png",
+  "type": "image",
+  "status_code": 200,
+  "size_bytes": 12345,
+  "error": ""
+}
+```
+
+Asset size is calculated using the `Content-Length` response header. If `Content-Length` is missing,
+the crawler reads the response body and calculates the size from it.
+
+If the same asset is found on multiple pages, it is requested only once and reused from cache.
 
 ## Install dependencies
 

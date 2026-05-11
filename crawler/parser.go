@@ -9,6 +9,11 @@ import (
 	"golang.org/x/net/html"
 )
 
+type assetRef struct {
+	URL  string
+	Type string
+}
+
 func cleanText(value string) string {
 	value = stdhtml.UnescapeString(value)
 	return strings.Join(strings.Fields(value), " ")
@@ -152,4 +157,60 @@ func getAttr(node *html.Node, key string) string {
 	}
 
 	return ""
+}
+
+func extractAssets(body []byte, baseURL string) []assetRef {
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		return nil
+	}
+
+	doc, err := html.Parse(bytes.NewReader(body))
+	if err != nil {
+		return nil
+	}
+
+	var assets []assetRef
+
+	var walk func(*html.Node)
+	walk = func(node *html.Node) {
+		if node.Type == html.ElementNode {
+			switch node.Data {
+			case "img":
+				if src := normalizeLink(getAttr(node, "src"), base); src != "" {
+					assets = append(assets, assetRef{
+						URL:  src,
+						Type: "image",
+					})
+				}
+
+			case "script":
+				if src := normalizeLink(getAttr(node, "src"), base); src != "" {
+					assets = append(assets, assetRef{
+						URL:  src,
+						Type: "script",
+					})
+				}
+
+			case "link":
+				rel := strings.ToLower(getAttr(node, "rel"))
+				if strings.Contains(rel, "stylesheet") {
+					if href := normalizeLink(getAttr(node, "href"), base); href != "" {
+						assets = append(assets, assetRef{
+							URL:  href,
+							Type: "style",
+						})
+					}
+				}
+			}
+		}
+
+		for child := node.FirstChild; child != nil; child = child.NextSibling {
+			walk(child)
+		}
+	}
+
+	walk(doc)
+
+	return assets
 }
