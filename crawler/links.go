@@ -45,6 +45,7 @@ func checkBrokenLinks(
 			brokenLinks = append(brokenLinks, BrokenLink{
 				URL:        link,
 				StatusCode: resp.StatusCode,
+				Error:      responseStatusText(resp),
 			})
 		}
 	}

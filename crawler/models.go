@@ -30,7 +30,7 @@ type Page struct {
 	Depth        int          `json:"depth"`
 	HTTPStatus   int          `json:"http_status"`
 	Status       string       `json:"status"`
-	Error        string       `json:"error,omitempty"`
+	Error        string       `json:"error"`
 	SEO          SEO          `json:"seo"`
 	BrokenLinks  []BrokenLink `json:"broken_links"`
 	Assets       []Asset      `json:"assets"`
@@ -47,8 +47,8 @@ type SEO struct {
 
 type BrokenLink struct {
 	URL        string `json:"url"`
-	StatusCode int    `json:"status_code,omitempty"`
-	Error      string `json:"error,omitempty"`
+	StatusCode int    `json:"status_code"`
+	Error      string `json:"error"`
 }
 
 type Asset struct {

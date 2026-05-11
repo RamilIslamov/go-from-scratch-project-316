@@ -3,16 +3,24 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"time"
 
 	"code/crawler"
 
-	"github.com/urfave/cli/v2"
+	cli "github.com/urfave/cli/v2"
 )
 
 func main() {
+	if err := run(os.Args, os.Stdout, &http.Client{}); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(0)
+	}
+}
+
+func run(args []string, out io.Writer, client *http.Client) error {
 	app := &cli.App{
 		Name:  "hexlet-go-crawler",
 		Usage: "analyze a website structure",
@@ -56,15 +64,13 @@ func main() {
 
 		Action: func(c *cli.Context) error {
 			if c.Args().Len() == 0 {
-				fmt.Println("URL is required")
+				fmt.Fprintln(out, "URL is required")
 				return nil
 			}
 
 			url := c.Args().First()
 
-			client := &http.Client{
-				Timeout: c.Duration("timeout"),
-			}
+			client.Timeout = c.Duration("timeout")
 
 			opts := crawler.Options{
 				URL:         url,
@@ -81,17 +87,14 @@ func main() {
 
 			result, err := crawler.Analyze(context.Background(), opts)
 			if err != nil {
-				fmt.Println(err)
+				fmt.Fprintln(out, err)
 				return nil
 			}
 
-			fmt.Println(string(result))
+			fmt.Fprintln(out, string(result))
 			return nil
 		},
 	}
 
-	if err := app.Run(os.Args); err != nil {
-		fmt.Println(err)
-		os.Exit(0)
-	}
+	return app.Run(args)
 }

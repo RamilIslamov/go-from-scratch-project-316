@@ -104,6 +104,71 @@ the crawler reads the response body and calculates the size from it.
 
 If the same asset is found on multiple pages, it is requested only once and reused from cache.
 
+## JSON report format
+
+The crawler outputs a JSON report with the analyzed website structure.
+
+Example:
+
+```json
+{
+  "root_url": "https://example.com",
+  "depth": 1,
+  "generated_at": "2024-06-01T12:34:56Z",
+  "pages": [
+    {
+      "url": "https://example.com",
+      "depth": 0,
+      "http_status": 200,
+      "status": "ok",
+      "error": "",
+      "seo": {
+        "has_title": true,
+        "title": "Example title",
+        "has_description": true,
+        "description": "Example description",
+        "has_h1": true
+      },
+      "broken_links": [
+        {
+          "url": "https://example.com/missing",
+          "status_code": 404,
+          "error": "Not Found"
+        }
+      ],
+      "assets": [
+        {
+          "url": "https://example.com/static/logo.png",
+          "type": "image",
+          "status_code": 200,
+          "size_bytes": 12345,
+          "error": ""
+        }
+      ],
+      "discovered_at": "2024-06-01T12:34:56Z"
+    }
+  ]
+}
+```
+
+### Fields
+
+- `root_url` — starting URL passed to the crawler.
+- `depth` — crawl depth option used for the run.
+- `generated_at` — report generation time in ISO8601 format.
+- `pages` — list of crawled internal pages.
+- `pages[].url` — page URL.
+- `pages[].depth` — distance from the root URL.
+- `pages[].http_status` — HTTP status code of the page request.
+- `pages[].status` — page analysis status, usually `ok` or `error`.
+- `pages[].error` — error message, or an empty string if there is no error.
+- `pages[].seo` — basic SEO metadata.
+- `pages[].broken_links` — links that returned HTTP `4xx`/`5xx` or network errors.
+- `pages[].assets` — static assets found on the page.
+- `pages[].discovered_at` — time when the page was processed in ISO8601 format.
+
+All JSON keys are always present. Empty values are represented as empty strings, empty arrays, zero values, or `false`.
+
 ## Install dependencies
 
 ```bash
