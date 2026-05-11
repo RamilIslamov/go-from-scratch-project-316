@@ -25,6 +25,10 @@ func checkBrokenLinks(
 		}
 		seen[link] = true
 
+		if isInternalLink(opts.URL, link) && isLikelyHTMLPage(link) {
+			continue
+		}
+
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
 		if err != nil {
 			brokenLinks = append(brokenLinks, BrokenLink{
@@ -72,4 +76,21 @@ func isInternalLink(rootURL string, link string) bool {
 	}
 
 	return strings.EqualFold(root.Host, parsed.Host)
+}
+
+func isLikelyHTMLPage(link string) bool {
+	parsed, err := url.Parse(link)
+	if err != nil {
+		return false
+	}
+
+	path := strings.ToLower(parsed.Path)
+
+	if path == "" || strings.HasSuffix(path, "/") {
+		return true
+	}
+
+	return strings.HasSuffix(path, ".html") ||
+		strings.HasSuffix(path, ".htm") ||
+		strings.HasSuffix(path, ".xml")
 }
