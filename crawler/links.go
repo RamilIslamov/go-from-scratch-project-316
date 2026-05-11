@@ -2,8 +2,10 @@ package crawler
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 )
 
@@ -24,10 +26,6 @@ func checkBrokenLinks(
 			continue
 		}
 		seen[link] = true
-
-		if isInternalLink(opts.URL, link) && isLikelyHTMLPage(link) {
-			continue
-		}
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
 		if err != nil {
@@ -60,6 +58,8 @@ func checkBrokenLinks(
 			})
 		}
 	}
+
+	fmt.Fprintf(os.Stderr, "DEBUG checkBrokenLinks input links=%v broken=%+v\n", links, brokenLinks)
 
 	return brokenLinks
 }
