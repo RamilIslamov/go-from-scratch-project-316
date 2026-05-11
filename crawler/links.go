@@ -29,7 +29,7 @@ func checkBrokenLinks(
 			continue
 		}
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodHead, link, nil)
 		if err != nil {
 			brokenLinks = append(brokenLinks, BrokenLink{
 				URL:   link,
