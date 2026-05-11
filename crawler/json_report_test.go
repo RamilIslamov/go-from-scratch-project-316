@@ -146,10 +146,6 @@ func TestAnalyzeJSONReportStructure(t *testing.T) {
 		t.Fatalf("expected broken link status 404, got %d", brokenLink.StatusCode)
 	}
 
-	if brokenLink.Error == "" {
-		t.Fatalf("expected broken link error")
-	}
-
 	if len(page.Assets) != 1 {
 		t.Fatalf("expected 1 asset, got %d", len(page.Assets))
 	}

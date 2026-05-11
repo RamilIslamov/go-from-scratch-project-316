@@ -15,8 +15,16 @@ func checkBrokenLinks(
 	links []string,
 ) []BrokenLink {
 	brokenLinks := []BrokenLink{}
+	seen := make(map[string]bool)
 
 	for _, link := range links {
+		link = normalizeURL(link)
+
+		if seen[link] {
+			continue
+		}
+		seen[link] = true
+
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
 		if err != nil {
 			brokenLinks = append(brokenLinks, BrokenLink{
@@ -45,7 +53,6 @@ func checkBrokenLinks(
 			brokenLinks = append(brokenLinks, BrokenLink{
 				URL:        link,
 				StatusCode: resp.StatusCode,
-				Error:      responseStatusText(resp),
 			})
 		}
 	}
