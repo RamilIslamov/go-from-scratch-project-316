@@ -1,15 +1,15 @@
-package crawler
+package parser
 
 import (
 	"bytes"
+	"code/internal/models"
+	"golang.org/x/net/html"
 	stdhtml "html"
 	"net/url"
 	"strings"
-
-	"golang.org/x/net/html"
 )
 
-type assetRef struct {
+type AssetRef struct {
 	URL  string
 	Type string
 }
@@ -19,7 +19,7 @@ func cleanText(value string) string {
 	return strings.Join(strings.Fields(value), " ")
 }
 
-func extractLinks(body []byte, baseURL string) []string {
+func ExtractLinks(body []byte, baseURL string) []string {
 	base, err := url.Parse(baseURL)
 	if err != nil {
 		return nil
@@ -85,13 +85,13 @@ func normalizeLink(rawLink string, base *url.URL) string {
 	return resolved.String()
 }
 
-func extractSEO(body []byte) SEO {
+func ExtractSEO(body []byte) models.SEO {
 	doc, err := html.Parse(bytes.NewReader(body))
 	if err != nil {
-		return SEO{}
+		return models.SEO{}
 	}
 
-	seo := SEO{}
+	seo := models.SEO{}
 
 	var walk func(*html.Node)
 	walk = func(node *html.Node) {
@@ -159,7 +159,7 @@ func getAttr(node *html.Node, key string) string {
 	return ""
 }
 
-func extractAssets(body []byte, baseURL string) []assetRef {
+func ExtractAssets(body []byte, baseURL string) []AssetRef {
 	base, err := url.Parse(baseURL)
 	if err != nil {
 		return nil
@@ -170,7 +170,7 @@ func extractAssets(body []byte, baseURL string) []assetRef {
 		return nil
 	}
 
-	var assets []assetRef
+	var assets []AssetRef
 
 	var walk func(*html.Node)
 	walk = func(node *html.Node) {
@@ -178,7 +178,7 @@ func extractAssets(body []byte, baseURL string) []assetRef {
 			switch node.Data {
 			case "img":
 				if src := normalizeLink(getAttr(node, "src"), base); src != "" {
-					assets = append(assets, assetRef{
+					assets = append(assets, AssetRef{
 						URL:  src,
 						Type: "image",
 					})
@@ -186,7 +186,7 @@ func extractAssets(body []byte, baseURL string) []assetRef {
 
 			case "script":
 				if src := normalizeLink(getAttr(node, "src"), base); src != "" {
-					assets = append(assets, assetRef{
+					assets = append(assets, AssetRef{
 						URL:  src,
 						Type: "script",
 					})
@@ -196,7 +196,7 @@ func extractAssets(body []byte, baseURL string) []assetRef {
 				rel := strings.ToLower(getAttr(node, "rel"))
 				if strings.Contains(rel, "stylesheet") {
 					if href := normalizeLink(getAttr(node, "href"), base); href != "" {
-						assets = append(assets, assetRef{
+						assets = append(assets, AssetRef{
 							URL:  href,
 							Type: "style",
 						})
@@ -215,7 +215,7 @@ func extractAssets(body []byte, baseURL string) []assetRef {
 	return assets
 }
 
-func normalizeURL(rawURL string) string {
+func NormalizeURL(rawURL string) string {
 	parsed, err := url.Parse(strings.TrimSpace(rawURL))
 	if err != nil {
 		return rawURL

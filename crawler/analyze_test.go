@@ -1,6 +1,7 @@
 package crawler
 
 import (
+	"code/internal/models"
 	"context"
 	"encoding/json"
 	"io"
@@ -21,7 +22,7 @@ func TestAnalyzeSuccess(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      1,
 		Timeout:    5 * time.Second,
@@ -52,7 +53,7 @@ func TestAnalyzeNetworkError(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      1,
 		HTTPClient: client,
@@ -91,7 +92,7 @@ func TestAnalyzeTimeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com/slow-page",
 		Depth:      1,
 		HTTPClient: client,
@@ -149,7 +150,7 @@ func TestAnalyzeRespectsDelayBetweenRequests(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      2,
 		Delay:      50 * time.Millisecond,
@@ -162,7 +163,7 @@ func TestAnalyzeRespectsDelayBetweenRequests(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var report Report
+	var report models.Report
 	if err := json.Unmarshal(result, &report); err != nil {
 		t.Fatalf("failed to unmarshal report: %v", err)
 	}
@@ -216,7 +217,7 @@ func TestAnalyzeRPSOverridesDelay(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      2,
 		Delay:      time.Second,
@@ -230,7 +231,7 @@ func TestAnalyzeRPSOverridesDelay(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var report Report
+	var report models.Report
 	if err := json.Unmarshal(result, &report); err != nil {
 		t.Fatalf("failed to unmarshal report: %v", err)
 	}
@@ -288,7 +289,7 @@ func TestAnalyzeStopsWaitingWhenContextCanceled(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      2,
 		Delay:      time.Second,
@@ -303,7 +304,7 @@ func TestAnalyzeStopsWaitingWhenContextCanceled(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var report Report
+	var report models.Report
 	if err := json.Unmarshal(result, &report); err != nil {
 		t.Fatalf("failed to unmarshal report: %v", err)
 	}

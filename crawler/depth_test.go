@@ -1,6 +1,7 @@
 package crawler
 
 import (
+	"code/internal/models"
 	"context"
 	"encoding/json"
 	"io"
@@ -41,7 +42,7 @@ func TestAnalyzeDepthOneCrawlsOnlyRootPage(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      1,
 		HTTPClient: client,
@@ -53,7 +54,7 @@ func TestAnalyzeDepthOneCrawlsOnlyRootPage(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var report Report
+	var report models.Report
 	if err := json.Unmarshal(result, &report); err != nil {
 		t.Fatalf("failed to unmarshal report: %v", err)
 	}
@@ -118,7 +119,7 @@ func TestAnalyzeCrawlsInternalLinksOnly(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      2,
 		HTTPClient: client,
@@ -130,7 +131,7 @@ func TestAnalyzeCrawlsInternalLinksOnly(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var report Report
+	var report models.Report
 	if err := json.Unmarshal(result, &report); err != nil {
 		t.Fatalf("failed to unmarshal report: %v", err)
 	}
@@ -179,7 +180,7 @@ func TestAnalyzeDoesNotDuplicatePages(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      2,
 		HTTPClient: client,
@@ -191,7 +192,7 @@ func TestAnalyzeDoesNotDuplicatePages(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var report Report
+	var report models.Report
 	if err := json.Unmarshal(result, &report); err != nil {
 		t.Fatalf("failed to unmarshal report: %v", err)
 	}
@@ -246,7 +247,7 @@ func TestAnalyzeReturnsValidReportWhenContextCanceled(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      2,
 		HTTPClient: client,
@@ -260,7 +261,7 @@ func TestAnalyzeReturnsValidReportWhenContextCanceled(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var report Report
+	var report models.Report
 	if err := json.Unmarshal(result, &report); err != nil {
 		t.Fatalf("report should be valid JSON: %v", err)
 	}

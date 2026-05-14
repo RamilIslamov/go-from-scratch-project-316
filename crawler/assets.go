@@ -1,31 +1,42 @@
 package crawler
 
 import (
+	"code/internal/fetcher"
+	"code/internal/models"
+	"code/internal/parser"
 	"context"
-	"io"
 	"net/http"
 	"sort"
-	"strconv"
+	"sync"
 )
 
 func checkAssets(
 	ctx context.Context,
 	client *http.Client,
 	limiter *rateLimiter,
-	opts Options,
-	assetRefs []assetRef,
-	cache map[string]Asset,
-) []Asset {
-	assets := []Asset{}
+	opts models.Options,
+	assetRefs []parser.AssetRef,
+	cache map[string]models.Asset,
+	cacheMu *sync.Mutex,
+) []models.Asset {
+	assets := []models.Asset{}
 
 	for _, ref := range assetRefs {
-		if cached, ok := cache[ref.URL]; ok {
+		cacheMu.Lock()
+		cached, ok := cache[ref.URL]
+		cacheMu.Unlock()
+
+		if ok {
 			assets = append(assets, cached)
 			continue
 		}
 
 		asset := fetchAsset(ctx, client, limiter, opts, ref)
+
+		cacheMu.Lock()
 		cache[ref.URL] = asset
+		cacheMu.Unlock()
+
 		assets = append(assets, asset)
 	}
 
@@ -53,72 +64,19 @@ func fetchAsset(
 	ctx context.Context,
 	client *http.Client,
 	limiter *rateLimiter,
-	opts Options,
-	ref assetRef,
-) Asset {
-	asset := Asset{
-		URL:   ref.URL,
-		Type:  ref.Type,
-		Error: "",
+	opts models.Options,
+	ref parser.AssetRef,
+) models.Asset {
+	result := fetcher.FetchAsset(ctx, client, limiter, ref.URL, fetcher.Options{
+		Retries:   opts.Retries,
+		UserAgent: opts.UserAgent,
+	})
+
+	return models.Asset{
+		URL:        ref.URL,
+		Type:       ref.Type,
+		StatusCode: result.StatusCode,
+		SizeBytes:  result.SizeBytes,
+		Error:      result.Error,
 	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ref.URL, nil)
-	if err != nil {
-		asset.Error = err.Error()
-		return asset
-	}
-
-	if opts.UserAgent != "" {
-		req.Header.Set("User-Agent", opts.UserAgent)
-	}
-
-	resp, err := doRequestWithRetries(ctx, client, limiter, req, opts.Retries)
-	if err != nil {
-		asset.Error = err.Error()
-		return asset
-	}
-
-	if resp == nil {
-		asset.Error = "empty response"
-		return asset
-	}
-
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	asset.StatusCode = resp.StatusCode
-
-	size, sizeErr := assetSize(resp)
-	asset.SizeBytes = size
-
-	if resp.StatusCode >= 400 {
-		asset.Error = responseStatusText(resp)
-		return asset
-	}
-
-	if sizeErr != nil {
-		asset.Error = sizeErr.Error()
-	}
-
-	return asset
-}
-
-func assetSize(resp *http.Response) (int64, error) {
-	contentLength := resp.Header.Get("Content-Length")
-	if contentLength != "" {
-		size, err := strconv.ParseInt(contentLength, 10, 64)
-		if err != nil {
-			return 0, err
-		}
-
-		return size, nil
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return 0, err
-	}
-
-	return int64(len(body)), nil
 }

@@ -1,6 +1,7 @@
 package crawler
 
 import (
+	"code/internal/models"
 	"context"
 	"io"
 	"net/http"
@@ -47,7 +48,7 @@ func TestAnalyzeBrokenLinks(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      1,
 		HTTPClient: client,
@@ -114,7 +115,7 @@ func TestAnalyzeIgnoresUnsupportedLinks(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      1,
 		HTTPClient: client,

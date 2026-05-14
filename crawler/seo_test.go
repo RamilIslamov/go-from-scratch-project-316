@@ -1,6 +1,7 @@
 package crawler
 
 import (
+	"code/internal/models"
 	"context"
 	"io"
 	"net/http"
@@ -37,7 +38,7 @@ func TestAnalyzeSEOWithAllTags(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      1,
 		HTTPClient: client,
@@ -98,7 +99,7 @@ func TestAnalyzeSEOWithoutTags(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      1,
 		HTTPClient: client,
@@ -162,7 +163,7 @@ func TestAnalyzeSEODecodesHTMLEntities(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      1,
 		HTTPClient: client,

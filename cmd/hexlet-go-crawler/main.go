@@ -1,6 +1,7 @@
 package main
 
 import (
+	"code/internal/models"
 	"context"
 	"fmt"
 	"io"
@@ -15,8 +16,8 @@ import (
 
 func main() {
 	if err := run(os.Args, os.Stdout, &http.Client{}); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(0)
+		_, _ = fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 }
 
@@ -72,7 +73,7 @@ func run(args []string, out io.Writer, client *http.Client) error {
 
 			client.Timeout = c.Duration("timeout")
 
-			opts := crawler.Options{
+			opts := models.Options{
 				URL:         url,
 				Depth:       c.Int("depth"),
 				Retries:     c.Int("retries"),

@@ -169,6 +169,20 @@ Example:
 
 All JSON keys are always present. Empty values are represented as empty strings, empty arrays, zero values, or `false`.
 
+## Concurrency
+
+The crawler can process multiple pages concurrently.
+
+Use `--workers` to control the number of worker goroutines:
+
+```bash
+go run ./cmd/hexlet-go-crawler --workers 8 https://example.com
+```
+
+By default, the crawler uses 4 workers.
+
+Request rate limiting is global for the whole crawling process, so `--delay` and `--rps` still limit all workers together.
+
 ## Install dependencies
 
 ```bash

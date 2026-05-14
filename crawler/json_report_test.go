@@ -1,6 +1,7 @@
 package crawler
 
 import (
+	"code/internal/models"
 	"context"
 	"encoding/json"
 	"io"
@@ -60,7 +61,7 @@ func TestAnalyzeJSONReportStructure(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      1,
 		Retries:    0,
@@ -73,7 +74,7 @@ func TestAnalyzeJSONReportStructure(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var report Report
+	var report models.Report
 	if err := json.Unmarshal(result, &report); err != nil {
 		t.Fatalf("failed to unmarshal report: %v", err)
 	}
@@ -185,7 +186,7 @@ func TestAnalyzeIndentJSONChangesOnlyFormatting(t *testing.T) {
 		}),
 	}
 
-	baseOpts := Options{
+	baseOpts := models.Options{
 		URL:        "https://example.com",
 		Depth:      1,
 		Retries:    0,
@@ -205,12 +206,12 @@ func TestAnalyzeIndentJSONChangesOnlyFormatting(t *testing.T) {
 		t.Fatalf("unexpected error for indented JSON: %v", err)
 	}
 
-	var compactReport Report
+	var compactReport models.Report
 	if err := json.Unmarshal(compactJSON, &compactReport); err != nil {
 		t.Fatalf("failed to unmarshal compact JSON: %v", err)
 	}
 
-	var indentedReport Report
+	var indentedReport models.Report
 	if err := json.Unmarshal(indentedJSON, &indentedReport); err != nil {
 		t.Fatalf("failed to unmarshal indented JSON: %v", err)
 	}

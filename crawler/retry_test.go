@@ -1,6 +1,7 @@
 package crawler
 
 import (
+	"code/internal/models"
 	"context"
 	"encoding/json"
 	"io"
@@ -28,7 +29,7 @@ func TestAnalyzeRetriesTemporaryErrorAndSucceeds(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      1,
 		Retries:    1,
@@ -41,7 +42,7 @@ func TestAnalyzeRetriesTemporaryErrorAndSucceeds(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var report Report
+	var report models.Report
 	if err := json.Unmarshal(result, &report); err != nil {
 		t.Fatalf("failed to unmarshal report: %v", err)
 	}
@@ -80,7 +81,7 @@ func TestAnalyzeStopsAfterRetryLimit(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      1,
 		Retries:    2,
@@ -93,7 +94,7 @@ func TestAnalyzeStopsAfterRetryLimit(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var report Report
+	var report models.Report
 	if err := json.Unmarshal(result, &report); err != nil {
 		t.Fatalf("failed to unmarshal report: %v", err)
 	}
@@ -132,7 +133,7 @@ func TestAnalyzeDoesNotRetryNotFoundStatus(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com/missing",
 		Depth:      1,
 		Retries:    2,
@@ -145,7 +146,7 @@ func TestAnalyzeDoesNotRetryNotFoundStatus(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var report Report
+	var report models.Report
 	if err := json.Unmarshal(result, &report); err != nil {
 		t.Fatalf("failed to unmarshal report: %v", err)
 	}
@@ -208,7 +209,7 @@ func TestAnalyzeBrokenLinkUsesLastRetryResult(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      1,
 		Retries:    1,
@@ -221,7 +222,7 @@ func TestAnalyzeBrokenLinkUsesLastRetryResult(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var report Report
+	var report models.Report
 	if err := json.Unmarshal(result, &report); err != nil {
 		t.Fatalf("failed to unmarshal report: %v", err)
 	}
@@ -257,7 +258,7 @@ func TestAnalyzeStopsRetriesWhenContextCanceled(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      1,
 		Retries:    5,
@@ -270,7 +271,7 @@ func TestAnalyzeStopsRetriesWhenContextCanceled(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var report Report
+	var report models.Report
 	if err := json.Unmarshal(result, &report); err != nil {
 		t.Fatalf("failed to unmarshal report: %v", err)
 	}

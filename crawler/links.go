@@ -5,60 +5,80 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
+
+	"code/internal/fetcher"
+	"code/internal/models"
+	"code/internal/parser"
 )
 
 func checkBrokenLinks(
 	ctx context.Context,
 	client *http.Client,
 	limiter *rateLimiter,
-	opts Options,
+	opts models.Options,
 	links []string,
-) []BrokenLink {
-	brokenLinks := []BrokenLink{}
+	cache map[string]*models.BrokenLink,
+	cacheMu *sync.Mutex,
+) []models.BrokenLink {
+	brokenLinks := []models.BrokenLink{}
 	seen := make(map[string]bool)
 
 	for _, link := range links {
-		link = normalizeURL(link)
+		link = parser.NormalizeURL(link)
 
 		if seen[link] {
 			continue
 		}
 		seen[link] = true
 
-		if isInternalLink(opts.URL, link) && isKnownInternalPage(link) {
+		cacheMu.Lock()
+		cached, ok := cache[link]
+		cacheMu.Unlock()
+
+		if ok {
+			if cached != nil {
+				brokenLinks = append(brokenLinks, *cached)
+			}
 			continue
 		}
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodHead, link, nil)
-		if err != nil {
-			brokenLinks = append(brokenLinks, BrokenLink{
-				URL:   link,
-				Error: err.Error(),
-			})
+		result := fetcher.CheckLink(ctx, client, limiter, link, fetcher.Options{
+			Retries:   opts.Retries,
+			UserAgent: opts.UserAgent,
+		})
+
+		if result.Error != "" {
+			brokenLink := models.BrokenLink{
+				URL:   result.URL,
+				Error: result.Error,
+			}
+
+			cacheMu.Lock()
+			cache[link] = &brokenLink
+			cacheMu.Unlock()
+
+			brokenLinks = append(brokenLinks, brokenLink)
 			continue
 		}
 
-		if opts.UserAgent != "" {
-			req.Header.Set("User-Agent", opts.UserAgent)
-		}
+		if result.StatusCode >= 400 {
+			brokenLink := models.BrokenLink{
+				URL:        result.URL,
+				StatusCode: result.StatusCode,
+			}
 
-		resp, err := doRequestWithRetries(ctx, client, limiter, req, opts.Retries)
-		if err != nil {
-			brokenLinks = append(brokenLinks, BrokenLink{
-				URL:   link,
-				Error: err.Error(),
-			})
+			cacheMu.Lock()
+			cache[link] = &brokenLink
+			cacheMu.Unlock()
+
+			brokenLinks = append(brokenLinks, brokenLink)
 			continue
 		}
 
-		_ = resp.Body.Close()
-
-		if resp.StatusCode >= 400 {
-			brokenLinks = append(brokenLinks, BrokenLink{
-				URL:        link,
-				StatusCode: resp.StatusCode,
-			})
-		}
+		cacheMu.Lock()
+		cache[link] = nil
+		cacheMu.Unlock()
 	}
 
 	return brokenLinks
@@ -76,18 +96,4 @@ func isInternalLink(rootURL string, link string) bool {
 	}
 
 	return strings.EqualFold(root.Host, parsed.Host)
-}
-
-func isKnownInternalPage(link string) bool {
-	parsed, err := url.Parse(link)
-	if err != nil {
-		return false
-	}
-
-	path := strings.ToLower(parsed.Path)
-
-	return strings.HasSuffix(path, ".html") ||
-		strings.HasSuffix(path, ".htm") ||
-		strings.HasSuffix(path, ".xml") ||
-		path == "/about"
 }

@@ -1,16 +1,19 @@
 package crawler
 
 import (
+	"code/internal/models"
 	"context"
+	"sync"
 	"time"
 )
 
 type rateLimiter struct {
+	mu       sync.Mutex
 	interval time.Duration
 	last     time.Time
 }
 
-func newRateLimiter(opts Options) *rateLimiter {
+func newRateLimiter(opts models.Options) *rateLimiter {
 	if opts.RPS > 0 {
 		return &rateLimiter{
 			interval: time.Second / time.Duration(opts.RPS),
@@ -26,7 +29,10 @@ func newRateLimiter(opts Options) *rateLimiter {
 	return &rateLimiter{}
 }
 
-func (l *rateLimiter) wait(ctx context.Context) error {
+func (l *rateLimiter) Wait(ctx context.Context) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
 	if l.interval <= 0 {
 		l.last = time.Now()
 		return nil

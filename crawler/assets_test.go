@@ -1,6 +1,7 @@
 package crawler
 
 import (
+	"code/internal/models"
 	"context"
 	"encoding/json"
 	"io"
@@ -61,7 +62,7 @@ func TestAnalyzeUsesAssetCacheForDuplicateAssets(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      2,
 		HTTPClient: client,
@@ -73,7 +74,7 @@ func TestAnalyzeUsesAssetCacheForDuplicateAssets(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var report Report
+	var report models.Report
 	if err := json.Unmarshal(result, &report); err != nil {
 		t.Fatalf("failed to unmarshal report: %v", err)
 	}
@@ -146,7 +147,7 @@ func TestAnalyzeAssetSizeFromBodyWhenContentLengthMissing(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      1,
 		HTTPClient: client,
@@ -158,7 +159,7 @@ func TestAnalyzeAssetSizeFromBodyWhenContentLengthMissing(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var report Report
+	var report models.Report
 	if err := json.Unmarshal(result, &report); err != nil {
 		t.Fatalf("failed to unmarshal report: %v", err)
 	}
@@ -227,7 +228,7 @@ func TestAnalyzeAssetErrorStatus(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      1,
 		Retries:    0,
@@ -240,7 +241,7 @@ func TestAnalyzeAssetErrorStatus(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var report Report
+	var report models.Report
 	if err := json.Unmarshal(result, &report); err != nil {
 		t.Fatalf("failed to unmarshal report: %v", err)
 	}
@@ -300,7 +301,7 @@ func TestAnalyzeAssetNetworkError(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      1,
 		Retries:    0,
@@ -313,7 +314,7 @@ func TestAnalyzeAssetNetworkError(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var report Report
+	var report models.Report
 	if err := json.Unmarshal(result, &report); err != nil {
 		t.Fatalf("failed to unmarshal report: %v", err)
 	}
@@ -408,7 +409,7 @@ func TestAnalyzeExtractsAllSupportedAssetTypes(t *testing.T) {
 		}),
 	}
 
-	opts := Options{
+	opts := models.Options{
 		URL:        "https://example.com",
 		Depth:      1,
 		HTTPClient: client,
@@ -420,7 +421,7 @@ func TestAnalyzeExtractsAllSupportedAssetTypes(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var report Report
+	var report models.Report
 	if err := json.Unmarshal(result, &report); err != nil {
 		t.Fatalf("failed to unmarshal report: %v", err)
 	}
